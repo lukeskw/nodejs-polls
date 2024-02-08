@@ -1,7 +1,14 @@
 import fastify from 'fastify'
 import { registerPollsRoutes } from './routes/polls.routes'
+import fastifyCookie from '@fastify/cookie'
 
 const app = fastify()
+
+app.register(fastifyCookie, {
+  secret: crypto.randomUUID(),
+  hook: 'onRequest',
+  parseOptions: {}
+})
 
 registerPollsRoutes(app)
 
