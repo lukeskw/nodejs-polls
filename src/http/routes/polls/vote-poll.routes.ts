@@ -4,6 +4,7 @@ import { ZodError, z } from 'zod'
 import { fromZodError } from 'zod-validation-error'
 import { prisma } from '../../../lib/prisma';
 import { redis } from '../../../lib/redis';
+import { voting } from '../../../utils/voting-pubsub';
 
 export const voteOnPolls = async (app: FastifyInstance) => {
 
@@ -41,7 +42,12 @@ export const voteOnPolls = async (app: FastifyInstance) => {
               }
             })
 
-            await redis.zincrby(pollId, -1, didUserVotedPreviouslyOnPoll.pollOptionId)
+            const votesAmount = await redis.zincrby(pollId, -1, didUserVotedPreviouslyOnPoll.pollOptionId)
+
+            voting.publish(pollId, {
+              pollOptionId: didUserVotedPreviouslyOnPoll.pollOptionId,
+              votes: Number(votesAmount)
+            })
 
           } catch(err){
             return reply.status(500).send({ error: 'An error has occured while deleting your previous vote. Try again later' })
@@ -65,11 +71,16 @@ export const voteOnPolls = async (app: FastifyInstance) => {
         }
       })
 
-      await redis.zincrby(pollId, 1, pollOptionId)
+      const votesAmount = await redis.zincrby(pollId, 1, pollOptionId)
 
       if(!vote){
         return reply.status(400).send({ error: 'Poll not created' })
       }
+
+      voting.publish(pollId, {
+        pollOptionId,
+        votes: Number(votesAmount)
+      })
 
       return reply.status(201).send({ vote })
 
