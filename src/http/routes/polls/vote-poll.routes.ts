@@ -3,6 +3,7 @@ import { FastifyReply } from 'fastify/types/reply';
 import { ZodError, z } from 'zod'
 import { fromZodError } from 'zod-validation-error'
 import { prisma } from '../../../lib/prisma';
+import { redis } from '../../../lib/redis';
 
 export const voteOnPolls = async (app: FastifyInstance) => {
 
@@ -33,11 +34,18 @@ export const voteOnPolls = async (app: FastifyInstance) => {
         })
 
         if(didUserVotedPreviouslyOnPoll && didUserVotedPreviouslyOnPoll.pollOptionId !== pollOptionId){
-          await prisma.vote.delete({
-            where: {
-              id: didUserVotedPreviouslyOnPoll.id
-            }
-          })
+          try{
+            await prisma.vote.delete({
+              where: {
+                id: didUserVotedPreviouslyOnPoll.id
+              }
+            })
+
+            await redis.zincrby(pollId, -1, didUserVotedPreviouslyOnPoll.pollOptionId)
+
+          } catch(err){
+            return reply.status(500).send({ error: 'An error has occured while deleting your previous vote. Try again later' })
+          }
         }
 
         if (didUserVotedPreviouslyOnPoll && didUserVotedPreviouslyOnPoll.pollOptionId === pollOptionId){
@@ -57,11 +65,13 @@ export const voteOnPolls = async (app: FastifyInstance) => {
         }
       })
 
+      await redis.zincrby(pollId, 1, pollOptionId)
+
       if(!vote){
         return reply.status(400).send({ error: 'Poll not created' })
       }
 
-      return reply.status(201).send(vote)
+      return reply.status(201).send({ vote })
 
     } catch( err ){
       if(err instanceof ZodError){
