@@ -3,7 +3,7 @@ import { voting } from "../../../utils/voting-pubsub";
 import z, { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 
-export const pollResults = async(app: FastifyInstance) => {
+export const pollResultsWs = async(app: FastifyInstance) => {
   app.get('/polls/:pollId/results', { websocket: true }, ( connection, request ) => {
     // pub/sub pattern
     //subscribe only on published messages on the channel with pollId
