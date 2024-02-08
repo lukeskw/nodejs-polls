@@ -1,9 +1,9 @@
 import fastify from 'fastify'
-import { polls } from './routes/polls/polls.routes'
+import { registerPollsRoutes } from './routes/polls.routes'
 
 const app = fastify()
 
-app.register(polls)
+registerPollsRoutes(app)
 
 app.listen({ port: 3333 }, (err, address) => {
   if (err) {
