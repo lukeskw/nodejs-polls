@@ -1,8 +1,11 @@
 import fastify from 'fastify'
+import { polls } from './routes/polls/polls.routes'
 
 const app = fastify()
 
-app.listen({ port: 3000 }, (err, address) => {
+app.register(polls)
+
+app.listen({ port: 3333 }, (err, address) => {
   if (err) {
     app.log.error(err)
     process.exit(1)
