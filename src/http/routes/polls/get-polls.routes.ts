@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify'
 import { ZodError, z } from 'zod'
 import { fromZodError } from 'zod-validation-error'
 import { prisma } from '../../../lib/prisma';
+import { redis } from '../../../lib/redis';
 
 export const getPolls = async (app: FastifyInstance) => {
 
@@ -32,7 +33,30 @@ export const getPolls = async (app: FastifyInstance) => {
         return reply.status(404).send({ error: 'Poll not found' });
       }
 
-      return reply.status(200).send({ poll })
+      const result = await redis.zrange(pollId, 0, -1, 'WITHSCORES')
+
+      const redisVotes = result.reduce(( prevValue, currValue, currIdx  ) => {
+        if(currIdx % 2 === 0){
+          const score = result[currIdx + 1]
+
+          Object.assign( prevValue, { [currValue]: Number(score) })
+        }
+        return prevValue
+      }, {} as Record<string, number>)
+
+      return reply.status(200).send({
+        poll: {
+          id: poll.id,
+          title: poll.title,
+          options: poll.options.map( option => {
+            return {
+              id: option.id,
+              title: option.title,
+              score: (option.id in redisVotes) ? redisVotes[option.id] : 0
+            }
+          })
+        }
+      })
 
     } catch( err ){
       if(err instanceof ZodError){
