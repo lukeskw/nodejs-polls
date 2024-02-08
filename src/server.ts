@@ -1,6 +1,7 @@
 import fastify from 'fastify'
-import { registerPollsRoutes } from './routes/polls.routes'
+import { registerPollsRoutes } from './polls.routes'
 import fastifyCookie from '@fastify/cookie'
+import fastifyWebsocket from '@fastify/websocket'
 
 const app = fastify()
 
@@ -9,6 +10,8 @@ app.register(fastifyCookie, {
   hook: 'onRequest',
   parseOptions: {}
 })
+
+app.register(fastifyWebsocket)
 
 registerPollsRoutes(app)
 
